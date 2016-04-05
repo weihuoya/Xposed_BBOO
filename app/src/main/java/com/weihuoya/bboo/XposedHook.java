@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
@@ -131,7 +132,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                     new XC_MethodHook() {
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                            // public abstract class IntentResolver<F extends IntentFilter, R extends Object>
+                            // public abstract class com.android.server.IntentResolver<F extends IntentFilter, R extends Object>
                             Object mReceiverResolver = XposedHelpers.getObjectField(param.thisObject, "mReceiverResolver");
                             XposedHelpers.findAndHookMethod(
                                     mReceiverResolver.getClass().getSuperclass(),
@@ -330,49 +331,78 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
     }
 
     protected void hookApplicationPackageManager(ClassLoader loader) {
-        XposedHelpers.findAndHookMethod("android.app.ApplicationPackageManager", loader,
-                "getInstalledApplications", int.class, new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        @SuppressWarnings("unchecked")
-                        List<ApplicationInfo> applicationInfoList = (List<ApplicationInfo>) param.getResult();
+        Class<?> clazz = null;
 
-                        ArrayList<ApplicationInfo> to_remove = new ArrayList<>();
-                        for (ApplicationInfo info : applicationInfoList) {
-                            if (info.packageName.contains(ModulePackageName) || info.packageName.contains(XposedPackageName)) {
-                                to_remove.add(info);
+        try {
+            clazz = XposedHelpers.findClass("android.app.ApplicationPackageManager", loader);
+        } catch (XposedHelpers.ClassNotFoundError e) {
+            XposedBridge.log("$$$ class not found: android.app.ApplicationPackageManager");
+        }
+
+        if(clazz != null) {
+            XposedHelpers.findAndHookMethod(
+                    clazz,
+                    "getInstalledApplications", int.class,
+                    new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                            @SuppressWarnings("unchecked")
+                            List<ApplicationInfo> applicationInfoList = (List<ApplicationInfo>) param.getResult();
+
+                            ArrayList<ApplicationInfo> to_remove = new ArrayList<>();
+                            for (ApplicationInfo info : applicationInfoList) {
+                                if (info.packageName.contains(ModulePackageName) || info.packageName.contains(XposedPackageName)) {
+                                    to_remove.add(info);
+                                }
                             }
+
+                            applicationInfoList.removeAll(to_remove);
+
+                            //for(ApplicationInfo info : applicationInfoList) {
+                            //    XposedBridge.log("getInstalledApplications: " + info.packageName);
+                            //}
                         }
+                    });
 
-                        applicationInfoList.removeAll(to_remove);
+            XposedHelpers.findAndHookMethod(
+                    clazz,
+                    "getInstalledPackages", int.class,
+                    new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                            @SuppressWarnings("unchecked")
+                            List<PackageInfo> packageInfoList = (List<PackageInfo>) param.getResult();
 
-                        for(ApplicationInfo info : applicationInfoList) {
-                            XposedBridge.log("getInstalledApplications: " + info.packageName);
+                            ArrayList<PackageInfo> to_remove = new ArrayList<>();
+                            for (PackageInfo info : packageInfoList) {
+                                if (info.packageName.contains(ModulePackageName) || info.packageName.contains(XposedPackageName)) {
+                                    to_remove.add(info);
+                                }
+                            }
+
+                            packageInfoList.removeAll(to_remove);
+
+                            //for(PackageInfo info : packageInfoList) {
+                            //    XposedBridge.log("getInstalledPackages: " + info.packageName);
+                            //}
+                        }
+                    });
+
+            XposedHelpers.findAndHookMethod(
+                    clazz,
+                    "setComponentEnabledSetting", ComponentName.class, int.class, int.class,
+                    new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            ComponentName component = (ComponentName)param.args[0];
+                            XposedBridge.log("$$$ setComponentEnabledSetting: " + component.toString());
+                            param.args[1] = PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
                         }
                     }
-                });
+            );
 
-        XposedHelpers.findAndHookMethod("android.app.ApplicationPackageManager", loader,
-                "getInstalledPackages", int.class, new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        @SuppressWarnings("unchecked")
-                        List<PackageInfo> packageInfoList = (List<PackageInfo>) param.getResult();
-
-                        ArrayList<PackageInfo> to_remove = new ArrayList<>();
-                        for (PackageInfo info : packageInfoList) {
-                            if (info.packageName.contains(ModulePackageName) || info.packageName.contains(XposedPackageName)) {
-                                to_remove.add(info);
-                            }
-                        }
-
-                        packageInfoList.removeAll(to_remove);
-
-                        for(PackageInfo info : packageInfoList) {
-                            XposedBridge.log("getInstalledPackages: " + info.packageName);
-                        }
-                    }
-                });
+            clazz = null;
+        }
     }
 
 }
