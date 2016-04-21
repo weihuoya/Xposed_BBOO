@@ -6,6 +6,27 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+
+        <item name="android:dropDownItemStyle">@style/MyDropDownItem</item>
+        <item name="android:autoCompleteTextViewStyle">@style/MyAutoCompleteTextView</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <style name="MyAutoCompleteTextView" parent="@android:style/Widget.AutoCompleteTextView">
+        <item name="android:popupBackground">@android:color/white</item>
+        <item name="android:popupElevation">5dp</item>
+        <item name="android:dropDownSelector">@android:color/darker_gray</item>
+    </style>
+    
+    <style name="MyDropDownItem" parent="@android:style/TextAppearance.Widget.DropDownItem">
+        <item name="android:textColor">@android:color/black</item>
     </style>
 
 </resources>

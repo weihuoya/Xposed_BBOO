@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">BBOO</string>
+    <string name="app_searchhint">name or package</string>
+    <string name="app_loading">Loading apps &#8230;</string>
+    <string name="app_status_normal">Normal</string>
+    <string name="app_status_blocked">Block</string>
+    <string name="title_activity_search_results">SearchResultsActivity</string>
 </resources>
