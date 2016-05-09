@@ -23,6 +23,7 @@ import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -146,8 +147,9 @@ public class MainActivity extends AppCompatActivity {
             appPackage.setText(model.getPackageName());
             appDesc.setText(model.getDescription());
 
+            boolean isBlocked = model.isBlocked() || !model.isApplicationEnabled();
             xposedIcon.setVisibility(model.isXposedModule() ? View.VISIBLE : View.INVISIBLE);
-            blockedIcon.setVisibility(model.isBlocked() ? View.VISIBLE : View.INVISIBLE);
+            blockedIcon.setVisibility(isBlocked ? View.VISIBLE : View.INVISIBLE);
             systemIcon.setVisibility(model.isSystemApplication() ? View.VISIBLE : View.INVISIBLE);
         }
     }
@@ -155,9 +157,15 @@ public class MainActivity extends AppCompatActivity {
     public class AppListAdapter extends RecyclerView.Adapter<AppItemViewHolder> {
         private List<AppItemModel> mSource;
         private List<AppItemModel> mDataset;
+        private boolean mShowDisabledApplication;
+        private boolean mShowSystemApplication;
+        private String mQuery;
 
         public AppListAdapter() {
             mDataset = new ArrayList<AppItemModel>();
+            mShowDisabledApplication = false;
+            mShowSystemApplication = false;
+            mQuery = null;
         }
 
         @Override
@@ -178,15 +186,40 @@ public class MainActivity extends AppCompatActivity {
 
         public void setSource(List<AppItemModel> apps) {
             mSource = apps;
-            setQuery(null);
+            setQuery(mQuery);
         }
 
-        public void setQuery(CharSequence query) {
-            int queryLength = query == null ? 0 : TextUtils.getTrimmedLength(query);
+        public boolean isShowDisabledApplication() {
+            return mShowDisabledApplication;
+        }
+
+        public void showDisabledApplication(boolean isShow) {
+            mShowDisabledApplication = isShow;
+            setQuery(mQuery);
+        }
+
+        public boolean isShowSystemApplication() {
+            return mShowSystemApplication;
+        }
+
+        public void showSystemApplication(boolean isShow) {
+            mShowSystemApplication = isShow;
+            setQuery(mQuery);
+        }
+
+        public void setQuery(String query) {
+            int queryLength = 0;
+
+            if(query != null) {
+                mQuery = query;
+                queryLength = TextUtils.getTrimmedLength(query);
+            }
 
             mDataset.clear();
             for(AppItemModel model : mSource) {
-                if(queryLength == 0 || model.getName().contains(query) || model.getPackageName().contains(query)) {
+                if( (queryLength == 0 || model.getName().contains(query) || model.getPackageName().contains(query) ) &&
+                        (mShowDisabledApplication || model.isApplicationEnabled()) &&
+                        (mShowSystemApplication || !model.isSystemApplication())  ) {
                     mDataset.add(model);
                 }
             }
@@ -199,6 +232,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         _G.attachContext(this);
 
         RecyclerView recyclerView = (RecyclerView) findViewById(R.id.listApps);
@@ -233,6 +267,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onMenuItemActionCollapse(MenuItem item) {
                 SearchView searchView = (SearchView) item.getActionView();
                 searchView.setQuery("", false);
+                searchView.clearFocus();
                 return true;
             }
         });
@@ -261,15 +296,33 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem menuItem) {
+        SearchView searchView;
+        AppListAdapter adapter;
+
         int itemId = menuItem.getItemId();
-        if (itemId == R.id.searchApp) {
-            SearchView searchView = (SearchView) menuItem.getActionView();
-            searchView.setIconified(false);
-            searchView.requestFocusFromTouch();
-        } else if(itemId == R.id.aboutMe) {
-            Toast.makeText(this, "About Me", Toast.LENGTH_SHORT).show();
+
+        switch (itemId) {
+            case R.id.searchApp:
+                searchView = (SearchView) menuItem.getActionView();
+                searchView.setIconified(false);
+                searchView.requestFocusFromTouch();
+                break;
+            case R.id.showSystem:
+                adapter = (AppListAdapter)mRecyclerView.getAdapter();
+                adapter.showSystemApplication(!adapter.isShowSystemApplication());
+                break;
+            case R.id.showDisabled:
+                adapter = (AppListAdapter)mRecyclerView.getAdapter();
+                adapter.showDisabledApplication(!adapter.isShowDisabledApplication());
+                break;
+            case R.id.aboutMe:
+                Toast.makeText(this, "About Me", Toast.LENGTH_SHORT).show();
+                break;
+            default:
+                return super.onOptionsItemSelected(menuItem);
         }
-        return super.onOptionsItemSelected(menuItem);
+
+        return true;
     }
 
     @Override

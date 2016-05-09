@@ -11,6 +11,20 @@
         />
 
     <item
+        android:id="@+id/showSystem"
+        android:title="@string/menu_show_system"
+        android:icon="@android:drawable/ic_dialog_map"
+        app:showAsAction="never"
+        />
+
+    <item
+        android:id="@+id/showDisabled"
+        android:title="@string/menu_show_disabled"
+        android:icon="@android:drawable/ic_dialog_alert"
+        app:showAsAction="never"
+        />
+
+    <item
         android:id="@+id/aboutMe"
         android:title="@string/about_me"
         android:icon="@android:drawable/ic_dialog_info"

@@ -56,6 +56,10 @@ public class AppItemModel implements Comparable<AppItemModel> {
         return _G.getIncludePackagePrefs().getBoolean(mPackageInfo.packageName, false);
     }
 
+    public boolean isApplicationEnabled() {
+        return mPackageInfo.applicationInfo.enabled;
+    }
+
     public boolean isSystemApplication() {
         return (mPackageInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) > 0;
     }

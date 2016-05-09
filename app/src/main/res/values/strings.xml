@@ -13,6 +13,8 @@
     <string name="sdcard_usage_size">SDcard: %1$s</string>
     <string name="app_detail_title">Application</string>
     <string name="divider_line_desc">Divider Line</string>
+    <string name="menu_show_disabled">Show Disabled</string>
+    <string name="menu_show_system">Show System</string>
     <string name="app_icon_desc">Application</string>
     <string name="app_action_icon">Action Icon</string>
     <string name="action_item_activities">Activity(%1$d)</string>

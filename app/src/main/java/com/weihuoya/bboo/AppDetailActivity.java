@@ -19,6 +19,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -138,7 +139,8 @@ public class AppDetailActivity extends AppCompatActivity {
             packageView.setText(appModel.getPackageName());
             descriptionView.setText(appModel.getDescription());
 
-            blockedView.setVisibility(appModel.isBlocked() ? View.VISIBLE : View.INVISIBLE);
+            boolean isBlocked = appModel.isBlocked() || !appModel.isApplicationEnabled();
+            blockedView.setVisibility(isBlocked ? View.VISIBLE : View.INVISIBLE);
             xposedView.setVisibility(appModel.isXposedModule() ? View.VISIBLE : View.INVISIBLE);
             systemView.setVisibility(appModel.isSystemApplication() ? View.VISIBLE : View.INVISIBLE);
         }
@@ -241,7 +243,10 @@ public class AppDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_app_info);
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         _G.attachContext(this);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         handleIntent(getIntent());
 
