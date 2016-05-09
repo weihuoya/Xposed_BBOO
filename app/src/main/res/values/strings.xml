@@ -1,8 +1,27 @@
 <resources>
     <string name="app_name">BBOO</string>
-    <string name="app_searchhint">name or package</string>
+    <string name="about_me">About</string>
+    <string name="app_search_hint">name or package</string>
     <string name="app_loading">Loading apps &#8230;</string>
     <string name="app_status_normal">Normal</string>
     <string name="app_status_blocked">Block</string>
+    <string name="app_code_size">App Size</string>
+    <string name="app_data_size">Data Size</string>
+    <string name="app_cache_size">Cache Size</string>
+    <string name="app_obb_size">OBB Size</string>
+    <string name="phone_usage_size">Phone: %1$s</string>
+    <string name="sdcard_usage_size">SDcard: %1$s</string>
+    <string name="app_detail_title">Application</string>
+    <string name="divider_line_desc">Divider Line</string>
+    <string name="app_icon_desc">Application</string>
+    <string name="app_action_icon">Action Icon</string>
+    <string name="action_item_activities">Activity(%1$d)</string>
+    <string name="action_item_services">Service(%1$d)</string>
+    <string name="action_item_receivers">Receiver(%1$d)</string>
+    <string name="action_item_providers">Provider(%1$d)</string>
+    <string name="action_item_permissions">Manager(%1$d)</string>
+    <string name="action_item_reqPermissions">Permission(%1$d)</string>
+    <string name="action_item_reqFeatures">Feature(%1$d)</string>
+    <string name="access_permission_denial">Permission Denial</string>
     <string name="title_activity_search_results">SearchResultsActivity</string>
 </resources>

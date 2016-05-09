@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.weihuoya.bboo">
 
-    <uses-permission android:name="android.permission.GET_PACKAGE_SIZE"/>
+    <uses-permission android:name="android.permission.GET_PACKAGE_SIZE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 
     <application
         android:allowBackup="true"
@@ -11,20 +13,42 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity android:name=".MainActivity" android:launchMode="singleTop">
+        <activity
+            android:name=".MainActivity"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <action android:name="android.intent.action.SEARCH" />
             </intent-filter>
+
             <meta-data
                 android:name="android.app.searchable"
                 android:resource="@xml/searchable" />
         </activity>
 
+        <activity
+            android:name=".AppDetailActivity"
+            android:parentActivityName=".MainActivity"
+            android:launchMode="singleTop">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.weihuoya.bboo.MainActivity" />
+        </activity>
+
+        <activity
+            android:name=".ActionListActivity"
+            android:parentActivityName=".AppDetailActivity"
+            android:launchMode="singleTop">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.weihuoya.bboo.AppDetailActivity" />
+        </activity>
+
         <provider
+            android:name=".BBOOSuggestionsProvider"
             android:authorities="com.weihuoya.bboo.BBOOSuggestionsProvider"
-            android:name=".BBOOSuggestionsProvider" />
+            android:exported="false" />
 
         <meta-data
             android:name="xposedmodule"

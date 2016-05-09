@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.provider.SearchRecentSuggestions;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -43,6 +44,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Locale;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -50,20 +52,16 @@ import dalvik.system.DexFile;
 
 import android.content.pm.IPackageStatsObserver;
 import android.content.pm.PackageStats;
+import android.widget.Toast;
 
-//import java.net.URL;
-//import java.lang.reflect.InvocationTargetException;
+import com.android.volley.Response;
 
+import org.json.JSONObject;
 
-// http://hukai.me/android-training-course-in-chinese/animations/screen-slide.html
-// https://github.com/codepath/android_guides/wiki/Using-the-RecyclerView
-// http://stackoverflow.com/questions/21585326/implementing-searchview-in-action-bar
 
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView mRecyclerView;
-    private SharedPreferences mPreferences;
-    private SearchRecentSuggestions mSuggestions;
 
     public class AppListLoadTask extends AsyncTask<Void, Void, List<AppItemModel>> {
         ProgressDialog dialog;
@@ -84,20 +82,23 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(List<AppItemModel> result) {
-            mRecyclerView.setAdapter(new AppListAdapter(result));
+            AppListAdapter adapter = (AppListAdapter) mRecyclerView.getAdapter();
+            adapter.setSource(result);
+            _G.ApplicationList = result;
             dialog.dismiss();
         }
 
         private List<AppItemModel> LoadApplicationList() {
             int progress = 0;
-            PackageManager pm = getPackageManager();
+            PackageManager pm = _G.getPackageManager();
             List<PackageInfo> pkglist = pm.getInstalledPackages(PackageManager.GET_META_DATA);
             ArrayList<AppItemModel> appList = new ArrayList<AppItemModel>();
 
             dialog.setMax(pkglist.size());
             for (PackageInfo pkg : pkglist) {
                 dialog.setProgress(++progress);
-                if (pkg.applicationInfo == null || (pkg.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 1) {
+                //if (pkg.applicationInfo == null || (pkg.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 1) {
+                if (pkg.applicationInfo == null) {
                     continue;
                 }
                 appList.add(new AppItemModel(pkg));
@@ -108,98 +109,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public class SearchViewEventListener implements SearchView.OnSuggestionListener, SearchView.OnQueryTextListener {
-
-        private SearchView mSearchView;
-
-        public SearchViewEventListener(SearchView searchView) {
-            searchView.setOnQueryTextListener(this);
-            searchView.setOnSuggestionListener(this);
-            mSearchView = searchView;
-        }
-
-        @Override
-        public boolean onSuggestionSelect(int position) {
-            return false;
-        }
-
-        @Override
-        public boolean onSuggestionClick(int position) {
-            String suggestion = getSuggestion(position);
-            mSearchView.setQuery(suggestion, true);
-            return false;
-        }
-
-        @Override
-        public boolean onQueryTextSubmit(String query) {
-            return false;
-        }
-
-        @Override
-        public boolean onQueryTextChange(String newText) {
-            return false;
-        }
-
-        private String getSuggestion(int position) {
-            Cursor cursor = (Cursor)mSearchView.getSuggestionsAdapter().getItem(position);
-            return cursor.getString(cursor.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_1));
-        }
-    }
-
-    public class AppItemModel implements Comparable<AppItemModel> {
-        public String appName;
-        public String appPackage;
-        public String appVersion;
-        public Drawable appIcon;
-        public String appStatus;
-        public long appSize;
-
-        public AppItemModel(PackageInfo pkg) {
-            PackageManager pm = getPackageManager();
-            boolean blocked = mPreferences.getBoolean(pkg.packageName, false);
-
-            appName = pm.getApplicationLabel(pkg.applicationInfo).toString();
-            appPackage = pkg.packageName;
-            appVersion = pkg.versionName;
-            appIcon = pm.getApplicationIcon(pkg.applicationInfo);
-            appStatus = getString(blocked ? R.string.app_status_blocked : R.string.app_status_normal);
-            appSize = 0;
-
-            try {
-                Method getPackageSizeInfo = pm.getClass().getMethod("getPackageSizeInfo", String.class, IPackageStatsObserver.class);
-                getPackageSizeInfo.invoke(pm, pkg.packageName, new IPackageStatsObserver.Stub() {
-                    @Override
-                    public void onGetStatsCompleted(android.content.pm.PackageStats pStats, boolean succeeded) throws android.os.RemoteException {
-                        appSize = pStats.codeSize;
-                    }
-                });
-            } catch (Exception e) {
-                Log.d("zhangwei", pkg.packageName + ": " + e.getMessage());
-            }
-        }
-
-        public int compareTo(@NonNull AppItemModel that) {
-            if (this.appName == null) {
-                return -1;
-            } else if (that.appName == null) {
-                return 1;
-            } else {
-                return this.appName.toUpperCase().compareTo(that.appName.toUpperCase());
-            }
-        }
-    }
-
     public class AppItemViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         @Bind(R.id.app_icon)
-        public ImageView appIcon;
+        protected ImageView appIcon;
         @Bind(R.id.app_name)
-        public TextView appName;
+        protected TextView appName;
         @Bind(R.id.app_package)
-        public TextView appPackage;
+        protected TextView appPackage;
         @Bind(R.id.app_desc)
-        public TextView appDesc;
-        @Bind(R.id.app_status)
-        public TextView appStatus;
+        protected TextView appDesc;
+        @Bind(R.id.xposed_icon)
+        protected ImageView xposedIcon;
+        @Bind(R.id.blocked_icon)
+        protected ImageView blockedIcon;
+        @Bind(R.id.system_icon)
+        protected ImageView systemIcon;
 
         public AppItemViewHolder(View itemView) {
             super(itemView);
@@ -210,19 +134,30 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
             RecyclerView.ViewHolder holder = mRecyclerView.getChildViewHolder(v);
-            Log.d("zhangwei", "ViewHolder: " + holder.getAdapterPosition());
+
+            Intent intent = new Intent(MainActivity.this, AppDetailActivity.class);
+            intent.putExtra("package", appPackage.getText());
+            ActivityCompat.startActivity(MainActivity.this, intent, null);
+        }
+
+        public void bindModel(AppItemModel model) {
+            appIcon.setImageDrawable(model.getIcon());
+            appName.setText(model.getName());
+            appPackage.setText(model.getPackageName());
+            appDesc.setText(model.getDescription());
+
+            xposedIcon.setVisibility(model.isXposedModule() ? View.VISIBLE : View.INVISIBLE);
+            blockedIcon.setVisibility(model.isBlocked() ? View.VISIBLE : View.INVISIBLE);
+            systemIcon.setVisibility(model.isSystemApplication() ? View.VISIBLE : View.INVISIBLE);
         }
     }
 
     public class AppListAdapter extends RecyclerView.Adapter<AppItemViewHolder> {
         private List<AppItemModel> mSource;
         private List<AppItemModel> mDataset;
-        //private Drawable mDefaultIcon;
 
-        public AppListAdapter(List<AppItemModel> apps) {
-            mSource = apps;
+        public AppListAdapter() {
             mDataset = new ArrayList<AppItemModel>();
-            setQuery(null, false);
         }
 
         @Override
@@ -233,13 +168,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(AppItemViewHolder holder, int position) {
-            AppItemModel model = mDataset.get(position);
-
-            holder.appIcon.setImageDrawable(model.appIcon);
-            holder.appName.setText(String.valueOf(model.appName));
-            holder.appPackage.setText(String.valueOf(model.appPackage));
-            holder.appDesc.setText(String.format("v%s  %s", model.appVersion, formatDiskSize(model.appSize)));
-            holder.appStatus.setText(String.valueOf(model.appStatus));
+            holder.bindModel(mDataset.get(position));
         }
 
         @Override
@@ -247,33 +176,22 @@ public class MainActivity extends AppCompatActivity {
             return mDataset.size();
         }
 
-        public void setQuery(CharSequence query, boolean submit) {
+        public void setSource(List<AppItemModel> apps) {
+            mSource = apps;
+            setQuery(null);
+        }
+
+        public void setQuery(CharSequence query) {
             int queryLength = query == null ? 0 : TextUtils.getTrimmedLength(query);
 
             mDataset.clear();
             for(AppItemModel model : mSource) {
-                if(queryLength == 0 || model.appName.contains(query) || model.appPackage.contains(query)) {
+                if(queryLength == 0 || model.getName().contains(query) || model.getPackageName().contains(query)) {
                     mDataset.add(model);
                 }
             }
 
-            if(submit) {
-                notifyDataSetChanged();
-            }
-        }
-
-        private String formatDiskSize(long size) {
-            String[] units = {"B", "KB", "MB", "GB", "TB", "PB"};
-            double value = size;
-            double base = 1024.0f;
-            int scale = 0;
-
-            while(value > base && (scale + 1) < units.length) {
-                value /= base;
-                scale += 1;
-            }
-
-            return new java.text.DecimalFormat("#.##").format(value) + units[scale];
+            notifyDataSetChanged();
         }
     }
 
@@ -281,31 +199,28 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        _G.attachContext(this);
 
         RecyclerView recyclerView = (RecyclerView) findViewById(R.id.listApps);
         if(recyclerView != null) {
             recyclerView.setHasFixedSize(true);
             recyclerView.setLayoutManager(new LinearLayoutManager(this));
+            recyclerView.setAdapter(new AppListAdapter());
         }
-
         mRecyclerView = recyclerView;
-        mPreferences = getSharedPreferences("IncludedPackage", MODE_PRIVATE);
-        mSuggestions = new SearchRecentSuggestions(this,
-                BBOOSuggestionsProvider.AUTHORITY, BBOOSuggestionsProvider.MODE);
 
         handleIntent(getIntent());
-
         setHookPackage();
         findAPILevel();
         findCandidateComponents();
+        handleLocation();
 
         new AppListLoadTask().execute();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.options_menu, menu);
-
+        getMenuInflater().inflate(R.menu.main_options_menu, menu);
 
         MenuItem menuItem = menu.findItem(R.id.searchApp);
         MenuItemCompat.setOnActionExpandListener(menuItem, new MenuItemCompat.OnActionExpandListener() {
@@ -322,7 +237,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         SearchManager manager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         SearchView searchView = (SearchView) menuItem.getActionView();
         searchView.setSearchableInfo(manager.getSearchableInfo(getComponentName()));
@@ -337,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onQueryTextChange(String newText) {
                 AppListAdapter adapter = (AppListAdapter) mRecyclerView.getAdapter();
-                adapter.setQuery(newText, true);
+                adapter.setQuery(newText);
                 return false;
             }
         });
@@ -347,10 +261,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem menuItem) {
-        if (menuItem.getItemId() == R.id.searchApp) {
+        int itemId = menuItem.getItemId();
+        if (itemId == R.id.searchApp) {
             SearchView searchView = (SearchView) menuItem.getActionView();
             searchView.setIconified(false);
             searchView.requestFocusFromTouch();
+        } else if(itemId == R.id.aboutMe) {
+            Toast.makeText(this, "About Me", Toast.LENGTH_SHORT).show();
         }
         return super.onOptionsItemSelected(menuItem);
     }
@@ -364,10 +281,10 @@ public class MainActivity extends AppCompatActivity {
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             String query = intent.getStringExtra(SearchManager.QUERY);
             AppListAdapter adapter = (AppListAdapter)mRecyclerView.getAdapter();
-            adapter.setQuery(query, true);
+            adapter.setQuery(query);
             mRecyclerView.scrollToPosition(0);
-            mSuggestions.saveRecentQuery(query, null);
-            Log.d("zhangwei", "search query: " + query);
+            _G.getSearchSuggestions().saveRecentQuery(query, null);
+            _G.log("search query: " + query);
         }
     }
 
@@ -383,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
             while (entries.hasMoreElements()) {
                 String entry = entries.nextElement();
                 if (entry.contains(packageName) && !entry.contains("$")) {
-                    Log.d("zhangwei", entry);
+                    _G.log(entry);
                 }
             }
         } catch (IOException e) {
@@ -399,7 +316,7 @@ public class MainActivity extends AppCompatActivity {
         final String AlipayPackageName = "com.eg.android.AlipayGphone";
         final String WandoujiaPackageName = "com.wandoujia.phoenix2";
 
-        SharedPreferences.Editor preferencesEditor = mPreferences.edit();
+        SharedPreferences.Editor preferencesEditor = _G.getIncludePackagePrefs().edit();
         preferencesEditor.putBoolean(QQPackageName, true);
         preferencesEditor.putBoolean(WechatPackageName, true);
         preferencesEditor.putBoolean(ZhihuPackageName, true);
@@ -410,6 +327,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void findAPILevel() {
+        Locale defaultLocale = Locale.getDefault();
+        String country = defaultLocale.getCountry();
+        String language = defaultLocale.getLanguage();
+        _G.log("country: " + country + ", language: " + language);
+
         Field[] buildFields = android.os.Build.class.getDeclaredFields();
         for (Field field : buildFields) {
             if (Modifier.isStatic(field.getModifiers())) {
@@ -417,9 +339,9 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     value = field.get(field.getType().newInstance());
                 } catch (Exception e) {
-                    Log.d("zhangwei", e.getMessage());
+                    _G.log(e.getMessage());
                 }
-                Log.d("zhangwei", "android.os.Build." + field.getName() + " = " + String.valueOf(value));
+                _G.log("android.os.Build." + field.getName() + " = " + String.valueOf(value));
             }
         }
 
@@ -428,9 +350,29 @@ public class MainActivity extends AppCompatActivity {
             Method mGetIntMethod = mClassType.getDeclaredMethod("getInt", String.class, int.class);
             mGetIntMethod.setAccessible(true);
             Integer level = (Integer) mGetIntMethod.invoke(null, "ro.build.version.sdk", 14);
-            Log.d("zhangwei", "api level: " + level);
+            _G.log("api level: " + level);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    protected void handleLocation() {
+        String url = "http://ip-api.com/json";
+        BasicRequestQueue.getInstance().getJson(url, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                String countryCode = "";
+                try {
+                    if("success".equals(response.getString("status"))) {
+                        countryCode = response.getString("countryCode");
+                    } else {
+                        _G.log("ip-api message: " + response.getString("message"));
+                    }
+                } catch (Exception e) {
+                    _G.log(e.getMessage());
+                }
+                _G.log("ip-api countryCode: " + countryCode);
+            }
+        });
     }
 }

@@ -26,4 +26,5 @@ dependencies {
     compile 'com.android.support:cardview-v7:23.+'
     compile 'com.android.support:design:23.+'
     compile 'com.jakewharton:butterknife:7.+'
+    compile 'com.android.volley:volley:1.+'
 }

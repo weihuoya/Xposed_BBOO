@@ -56,15 +56,15 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
     public void initZygote(StartupParam param) throws Throwable {
         //XposedBridge.log("initZygote modulePath: " + param.modulePath);
 
-        preferences = new XSharedPreferences(ModulePackageName, "IncludedPackage");
+        preferences = new XSharedPreferences(ModulePackageName, _G.PREF_INCLUDE_PACKAGES);
         preferences.makeWorldReadable();
     }
 
     @Override
     public void handleLoadPackage(LoadPackageParam param) throws Throwable {
-        if(param.packageName.equals("android")) {
-            hookBroadcast(param.classLoader);
-        }
+        //if(param.packageName.equals("android")) {
+        //    hookBroadcast(param.classLoader);
+        //}
 
         if (param.appInfo == null ||
                 (param.appInfo.flags & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0 ||
@@ -328,7 +328,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                 method = "getSmsToMmsTextThreshold";
                 hook = new XC_MethodReplacement() {
                     protected Object replaceHookedMethod(XC_MethodHook.MethodHookParam paramAnonymousMethodHookParam) throws Throwable {
-                        return Integer.valueOf(255);
+                        return 255;
                     }
                 };
             } catch (XposedHelpers.ClassNotFoundError e) {
@@ -440,9 +440,24 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
             Context mContext = (Context) XposedHelpers.callMethod(activityThread, "getSystemContext");
 
             PackageInfo packageInfo = mContext.getPackageManager().getPackageInfo(param.packageName, PackageManager.GET_ACTIVITIES | PackageManager.GET_SERVICES);
-            XposedBridge.log("$$$ dumpPackageInfo: " + param.packageName + ", " + param.appInfo.uid);
-            XposedBridge.log("version: " + packageInfo.versionName);
 
+            StringBuilder sb = new StringBuilder();
+            sb.append("$$$ dumpPackageInfo: ");
+            sb.append(param.packageName);
+            sb.append(", version: ");
+            sb.append(packageInfo.versionName);
+
+            if(packageInfo.activities != null && packageInfo.activities.length > 0) {
+                sb.append(", activities: ");
+                sb.append(packageInfo.activities.length);
+            }
+
+            if(packageInfo.services != null && packageInfo.services.length > 0) {
+                sb.append(", services: ");
+                sb.append(packageInfo.services.length);
+            }
+
+            XposedBridge.log(sb.toString());
             //StringBuilder activities = new StringBuilder().append("activities: ");
             //for(ActivityInfo activityInfo : packageInfo.activities) {
             //    activities.append(activityInfo.name).append(", ");
