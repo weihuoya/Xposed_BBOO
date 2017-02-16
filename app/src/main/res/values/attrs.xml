@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-        <!-- SearchView AutoCompleteTextView style -->
-        <attr name="searchAutoCompleteTextView" format="reference" />
+    <declare-styleable name="MyToggleButton">
+        <attr name="my_width" format="dimension" />
+        <attr name="my_height" format="dimension" />
+        <attr name="my_borderWidth" format="dimension" />
+        <attr name="my_borderColor" format="reference|color" />
+        <attr name="my_thumbColor" format="reference|color" />
+        <attr name="my_colorOn" format="reference|color" />
+        <attr name="my_colorOff" format="reference|color" />
+    </declare-styleable>
+
+    <!-- SearchView AutoCompleteTextView style -->
+    <attr name="searchAutoCompleteTextView" format="reference" />
 </resources>

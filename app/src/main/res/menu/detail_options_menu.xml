@@ -3,6 +3,26 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/unstallApp"
+        android:title="@string/app_name"
+        android:icon="@android:drawable/ic_menu_delete"
+        app:showAsAction="collapseActionView|ifRoom"
+        />
+
+    <item
+        android:id="@+id/notifyCtrl"
+        android:title="@string/app_name"
+        android:icon="@android:drawable/ic_menu_preferences"
+        app:showAsAction="collapseActionView|ifRoom"
+        />
+
+    <item
+        android:id="@+id/extractApk"
+        android:title="@string/menu_extract_apk"
+        android:icon="@android:drawable/ic_dialog_info"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/aboutMe"
         android:title="@string/about_me"
         android:icon="@android:drawable/ic_dialog_info"

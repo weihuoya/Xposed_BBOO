@@ -2,9 +2,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.weihuoya.bboo">
 
+    <uses-permission android:name="android.permission.CLEAR_APP_CACHE" />
     <uses-permission android:name="android.permission.GET_PACKAGE_SIZE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- for Samsung -->
+    <uses-permission android:name="android.permission.sec.MDM_APP_MGMT" />
+
+    <!-- for Samsung -->
+    <uses-permission android:name="com.sec.android.provider.badge.permission.READ" />
+    <uses-permission android:name="com.sec.android.provider.badge.permission.WRITE" />
+
+    <!-- for htc -->
+    <uses-permission android:name="com.htc.launcher.permission.READ_SETTINGS" />
+    <uses-permission android:name="com.htc.launcher.permission.UPDATE_SHORTCUT" />
+
+    <!-- for sony -->
+    <uses-permission android:name="com.sonyericsson.home.permission.BROADCAST_BADGE" />
+
+    <!-- for apex -->
+    <uses-permission android:name="com.anddoes.launcher.permission.UPDATE_COUNT" />
+
+    <!-- for solid -->
+    <uses-permission android:name="com.majeur.launcher.permission.UPDATE_BADGE" />
 
     <application
         android:allowBackup="true"
@@ -12,13 +34,14 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <activity
-            android:name=".MainActivity"
+            android:name=".activity.MainActivity"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
                 <action android:name="android.intent.action.SEARCH" />
             </intent-filter>
 
@@ -26,29 +49,98 @@
                 android:name="android.app.searchable"
                 android:resource="@xml/searchable" />
         </activity>
-
         <activity
-            android:name=".AppDetailActivity"
-            android:parentActivityName=".MainActivity"
-            android:launchMode="singleTop">
+            android:name=".activity.AppDetailActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".activity.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.weihuoya.bboo.MainActivity" />
+                android:value=".activity.MainActivity" />
         </activity>
-
         <activity
-            android:name=".ActionListActivity"
-            android:parentActivityName=".AppDetailActivity"
-            android:launchMode="singleTop">
+            android:name=".activity.ActionListActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".activity.AppDetailActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.weihuoya.bboo.AppDetailActivity" />
+                android:value=".activity.AppDetailActivity" />
+        </activity>
+        <activity
+            android:name=".activity.HTMLViewerActivity"
+            android:parentActivityName=".activity.AppDetailActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activity.AppDetailActivity" />
+        </activity>
+        <activity
+            android:name=".knox.KnoxMainActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".activity.MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activity.MainActivity" />
+        </activity>
+        <activity
+            android:name=".xposed.XposedMainActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".activity.MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activity.MainActivity" />
+        </activity>
+        <activity
+            android:name=".root.RootMainActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".activity.MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activity.MainActivity" />
+        </activity>
+        <activity
+            android:name=".activity.AboutActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".activity.MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activity.MainActivity" />
         </activity>
 
-        <provider
-            android:name=".BBOOSuggestionsProvider"
-            android:authorities="com.weihuoya.bboo.BBOOSuggestionsProvider"
-            android:exported="false" />
+        <receiver
+            android:name=".knox.KnoxAdminReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/knox_device_admin" />
+
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+                <action android:name="android.app.action.DEVICE_ADMIN_DISABLED" />
+                <action android:name="android.app.action.DEVICE_ADMIN_DISABLE_REQUESTED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".knox.KnoxLicenseReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="edm.intent.action.license.status" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".PackageIntentReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_INSTALL" />
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+                <action android:name="android.intent.action.PACKAGE_FULLY_REMOVED" />
+
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
 
         <meta-data
             android:name="xposedmodule"
@@ -60,6 +152,18 @@
             android:name="xposedminversion"
             android:value="54" />
 
+        <provider
+            android:name=".FileContentProvider"
+            android:authorities="com.weihuoya.bboo.htmlfileprovider"
+            android:enabled="true"
+            android:exported="false"
+            android:grantUriPermissions="true"
+            android:multiprocess="false"
+            android:syncable="false" />
+        <provider
+            android:name=".BBOOSuggestionsProvider"
+            android:authorities="com.weihuoya.bboo.BBOOSuggestionsProvider"
+            android:exported="false" />
     </application>
 
 </manifest>

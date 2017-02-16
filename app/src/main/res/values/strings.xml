@@ -1,20 +1,48 @@
 <resources>
     <string name="app_name">BBOO</string>
     <string name="about_me">About</string>
+    <string name="save_to_file">Save</string>
     <string name="app_search_hint">name or package</string>
     <string name="app_loading">Loading apps &#8230;</string>
+    <string name="app_elm_activating">Knox License Activating &#8230;</string>
     <string name="app_status_normal">Normal</string>
     <string name="app_status_blocked">Block</string>
     <string name="app_code_size">App Size</string>
     <string name="app_data_size">Data Size</string>
     <string name="app_cache_size">Cache Size</string>
     <string name="app_obb_size">OBB Size</string>
+    <string name="app_uninstall_btn">Uninstall</string>
+    <string name="app_block_btn1">Block Application</string>
+    <string name="app_block_btn2">Use Application</string>
     <string name="phone_usage_size">Phone: %1$s</string>
     <string name="sdcard_usage_size">SDcard: %1$s</string>
     <string name="app_detail_title">Application</string>
     <string name="divider_line_desc">Divider Line</string>
+
+    <string name="knox">Knox</string>
+    <string name="xposed">Xposed</string>
+    <string name="root">Root</string>
+    <string name="logcat">Logcat</string>
+    <string name="about">About</string>
+
+    <string name="enable_device_admin">Enable Device Admin</string>
+    <string name="disable_device_admin">Disable Device Admin</string>
+
     <string name="menu_show_disabled">Show Disabled</string>
     <string name="menu_show_system">Show System</string>
+
+    <string name="menu_activate_elm">Activate Knox License</string>
+    <string name="menu_xposed_module">Xposed Module</string>
+    <string name="menu_extract_apk">Extract Apk</string>
+    <string name="menu_root_device">Root Device</string>
+    <string name="menu_shell_cmd">Shell Command</string>
+    <string name="main_tab_usr">User</string>
+    <string name="main_tab_sys">System</string>
+    <string name="main_tab_prc">Process</string>
+    <string name="process_state_r">Running</string>
+    <string name="process_state_s">Sleeping</string>
+    <string name="process_state_d">Waiting</string>
+    <string name="process_state_z">Zombie</string>
     <string name="app_icon_desc">Application</string>
     <string name="app_action_icon">Action Icon</string>
     <string name="action_item_activities">Activity(%1$d)</string>
@@ -24,6 +52,10 @@
     <string name="action_item_permissions">Manager(%1$d)</string>
     <string name="action_item_reqPermissions">Permission(%1$d)</string>
     <string name="action_item_reqFeatures">Feature(%1$d)</string>
+    <string name="action_item_intentFilters">Intent(%1$d)</string>
+    <string name="action_item_signatures">Signature(%1$d)</string>
+    <string name="action_item_manifest">Manifest</string>
     <string name="access_permission_denial">Permission Denial</string>
     <string name="title_activity_search_results">SearchResultsActivity</string>
+    <string name="title_activity_root_main">RootMainActivity</string>
 </resources>

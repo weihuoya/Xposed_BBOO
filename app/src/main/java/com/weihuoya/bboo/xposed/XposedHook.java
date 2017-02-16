@@ -1,4 +1,4 @@
-package com.weihuoya.bboo;
+package com.weihuoya.bboo.xposed;
 
 /**
  * Created by zhangwei1 on 2016/3/7.
@@ -8,23 +8,20 @@ import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
 
 
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.pm.ServiceInfo;
-import android.net.ConnectivityManager;
-import android.net.wifi.WifiManager;
 import android.os.IBinder;
-import android.os.UserHandle;
 
+
+import com.weihuoya.bboo._G;
+import com.weihuoya.bboo._P;
 
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XSharedPreferences;
@@ -37,7 +34,6 @@ import de.robv.android.xposed.IXposedHookInitPackageResources;
 
 
 import de.robv.android.xposed.callbacks.XC_InitPackageResources;
-import de.robv.android.xposed.callbacks.XC_LayoutInflated;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -46,8 +42,11 @@ import de.robv.android.xposed.XC_MethodHook;
 public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage, IXposedHookInitPackageResources {
 
     public static XSharedPreferences preferences;
-    public static final String ModulePackageName = XposedHook.class.getPackage().getName();
+    public static final String BBOOPackageName = "com.weihuoya.bboo";
     public static final String XposedPackageName = "de.robv.android.xposed.installer";
+
+    protected ArrayList<String> mLoadedPackages = new ArrayList<>();
+    protected ArrayList<String> mQueriedIntents = new ArrayList<>();
 
     public XposedHook() {
     }
@@ -55,30 +54,73 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
     @Override
     public void initZygote(StartupParam param) throws Throwable {
         //XposedBridge.log("initZygote modulePath: " + param.modulePath);
-
-        preferences = new XSharedPreferences(ModulePackageName, _G.PREF_INCLUDE_PACKAGES);
+        preferences = new XSharedPreferences(BBOOPackageName, _P.PREF_INCLUDE_PACKAGES);
         preferences.makeWorldReadable();
     }
 
     @Override
     public void handleLoadPackage(LoadPackageParam param) throws Throwable {
-        //if(param.packageName.equals("android")) {
-        //    hookBroadcast(param.classLoader);
-        //}
+        if(param.packageName.equals("android")) {
+            hookBroadcast(param.classLoader);
+        }
 
-        if (param.appInfo == null ||
+        if (param.packageName == null || param.appInfo == null ||
                 (param.appInfo.flags & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0 ||
-                param.packageName.equals(XposedPackageName) || param.packageName.equals(ModulePackageName) ||
                 !param.isFirstApplication) {
             return;
         }
 
-        if(isTargetPackage(param.packageName)) {
+        if(mLoadedPackages.indexOf(param.packageName) == -1) {
+            mLoadedPackages.add(param.packageName);
+        }
+
+        if(BBOOPackageName.equals(param.packageName)) {
+            Class<?> clazz = null;
+            try {
+                clazz = XposedHelpers.findClass("com.weihuoya.bboo.xposed.XposedManager", param.classLoader);
+            } catch (XposedHelpers.ClassNotFoundError e) {
+                XposedBridge.log("$$$ class not found: com.weihuoya.bboo.xposed.XposedManager");
+            }
+            if(clazz != null) {
+                XposedHelpers.findAndHookMethod(
+                        clazz,
+                        "isXposedModuleEnabled",
+                        new XC_MethodReplacement() {
+                            @Override
+                            protected Object replaceHookedMethod(MethodHookParam methodHookParam) throws Throwable {
+                                return true;
+                            }
+                        }
+                );
+
+                XposedHelpers.findAndHookMethod(
+                        clazz,
+                        "getLoadedPackages",
+                        new XC_MethodReplacement() {
+                            @Override
+                            protected Object replaceHookedMethod(MethodHookParam methodHookParam) throws Throwable {
+                                return mLoadedPackages;
+                            }
+                        }
+                );
+
+                XposedHelpers.findAndHookMethod(
+                        clazz,
+                        "getQueriedIntents",
+                        new XC_MethodReplacement() {
+                            @Override
+                            protected Object replaceHookedMethod(MethodHookParam methodHookParam) throws Throwable {
+                                return mQueriedIntents;
+                            }
+                        }
+                );
+            }
+        } else if (isTargetPackage(param.packageName)) {
             dumpPackageInfo(param);
             HookContextService(param.classLoader);
             hookApplicationPackageManager(param.classLoader);
         } else {
-            XposedBridge.log("$$$ handleLoadPackage packageName: " + param.packageName + " processName: " + param.processName);
+            XposedBridge.log("$$$ handleLoadPackage packageName: " + param.packageName + ", processName: " + param.processName);
         }
     }
 
@@ -92,19 +134,11 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
     }
 
     protected boolean isTargetPackage(String packageName) {
-        if(packageName == null) {
-            return false;
-        } else {
-            boolean result = preferences.getBoolean(packageName, false);
-            XposedBridge.log("$$$ isTargetPackage : " + packageName + ", " + String.valueOf(result));
-            return result;
-        }
+        return packageName!= null && preferences.getBoolean(packageName, false);
     }
 
     protected boolean isSystemPackage(String packageName) {
-        if(packageName == null) {
-            return false;
-        } else if(packageName.startsWith("android") ||
+        if(packageName.startsWith("android") ||
                 packageName.startsWith("com.meizu") ||
                 packageName.startsWith("com.android") ||
                 packageName.startsWith("com.google.android")) {
@@ -130,44 +164,21 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                     new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                            Intent intent = (Intent)param.args[0];
-                            String resolvedType = (String)param.args[1];
-                            int flags = (int)param.args[2];
-                            int userId = (int)param.args[3];
-                            //XposedBridge.log("$$$ PackageManagerService queryIntentReceivers: " + intent.getAction() + ", " + resolvedType + ", " + flags + ", " + userId);
-                            //
-                            //if(Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+                            //Intent intent = (Intent)param.args[0];
+                            //String resolvedType = (String)param.args[1];
+                            //int flags = (int)param.args[2];
+                            //int userId = (int)param.args[3];
                             @SuppressWarnings("unchecked")
                             List<ResolveInfo> newReceivers = (List<ResolveInfo>)param.getResult();
-
-                            if(newReceivers != null) {
-                                boolean isTargetIntent = false;
+                            if(newReceivers != null && newReceivers.size() > 0) {
                                 Iterator<ResolveInfo> iter = newReceivers.iterator();
-
-                                StringBuilder sb = new StringBuilder();
-                                sb.append("$$$ queryIntentReceivers: ");
-                                sb.append(intent.getAction());
-                                sb.append(" {");
-
                                 while(iter.hasNext()) {
                                     ResolveInfo receiver = iter.next();
                                     if(isTargetPackage(receiver.activityInfo.packageName)) {
-                                        isTargetIntent = true;
                                         iter.remove();
-                                    } else if(isSystemPackage(receiver.activityInfo.packageName)) {
-                                        continue;
-                                    } else {
-                                        sb.append(receiver.activityInfo.packageName);
-                                        sb.append(", ");
                                     }
                                 }
-
-                                if(isTargetIntent) {
-                                    sb.append("}");
-                                    XposedBridge.log(sb.toString());
-                                }
                             }
-                            //}
                         }
                     }
             );
@@ -198,16 +209,64 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                                         @Override
                                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                                             Intent intent = (Intent)param.args[0];
-                                            String resolvedType = (String)param.args[1];
-                                            boolean defaultOnly = (boolean)param.args[2];
-                                            int userId = (int)param.args[3];
-                                            //XposedBridge.log("$$$ mReceiverResolver queryIntent: " + intent.getAction() + ", " + resolvedType + ", " + defaultOnly + ", " + userId);
-                                            // com.android.server.am.BroadcastFilter
-                                            //Class<?> clazz = XposedHelpers.findClass("com.android.server.am.BroadcastFilter", param.thisObject.getClass().getClassLoader());
-                                            //List<Object> registeredReceiversForUser = (List<Object>)param.getResult();
-                                            //for(int i = 0; i < registeredReceiversForUser.size(); ++i) {
-                                            //    clazz.cast(registeredReceiversForUser.get(i)).toString();
-                                            //}
+                                            List<Object> registeredReceiversForUser = (List<Object>)param.getResult();
+                                            String action = intent.getAction();
+                                            if(action == null || registeredReceiversForUser.size() == 0) {
+                                                return;
+                                            }
+                                            //String resolvedType = (String)param.args[1];
+                                            //boolean defaultOnly = (boolean)param.args[2];
+                                            //int userId = (int)param.args[3];
+
+                                            ClassLoader loader = param.thisObject.getClass().getClassLoader();
+                                            Class<?> RuleClass = XposedHelpers.findClass("com.android.server.firewall.IntentFirewall$Rule", loader);
+                                            Class<?> BroadcastFilterClass = XposedHelpers.findClass("com.android.server.am.BroadcastFilter", loader);
+
+                                            Iterator<Object> iter = registeredReceiversForUser.iterator();
+
+                                            StringBuilder sb = new StringBuilder();
+                                            sb.append("mReceiverResolver: ");
+                                            sb.append(action);
+                                            sb.append(" {");
+
+                                            if(mQueriedIntents.indexOf(action) == -1) {
+                                                mQueriedIntents.add(action);
+                                            }
+
+                                            while(iter.hasNext()) {
+                                                Object receiver = iter.next();
+                                                if(receiver instanceof ResolveInfo) {
+                                                    String pkgName = null;
+                                                    ResolveInfo info = (ResolveInfo)receiver;
+                                                    if(info.activityInfo != null) {
+                                                        pkgName = info.activityInfo.packageName;
+                                                    } else if(info.serviceInfo != null) {
+                                                        pkgName = info.serviceInfo.packageName;
+                                                    } else if(info.providerInfo != null) {
+                                                        pkgName = info.providerInfo.packageName;
+                                                    }
+                                                    if(isTargetPackage(pkgName)) {
+                                                        iter.remove();
+                                                    }
+                                                    sb.append(pkgName);
+                                                    sb.append(", ");
+                                                } else if(BroadcastFilterClass.isInstance(receiver)) {
+                                                    String pkgName = (String)XposedHelpers.getObjectField(receiver, "packageName");
+                                                    if(isTargetPackage(pkgName)) {
+                                                        iter.remove();
+                                                    }
+                                                    sb.append(pkgName);
+                                                    sb.append(", ");
+                                                } else if(RuleClass.isInstance(receiver)) {
+                                                    //Method getIntentFilterCountMethod = RuleClass.getMethod("getIntentFilterCount");
+                                                    //Method getComponentFilterCountMethod = RuleClass.getMethod("getComponentFilterCount");
+                                                    //int intentFilterCount = (int)getIntentFilterCountMethod.invoke(receiver);
+                                                    //int componentFilterCount = (int)getComponentFilterCountMethod.invoke(receiver);
+                                                }
+                                            }
+
+                                            sb.append("}");
+                                            XposedBridge.log(sb.toString());
                                         }
                                     }
                             );
@@ -216,8 +275,6 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
             );
             clazz = null;
         }
-
-
 
         /*
         try  {
@@ -359,7 +416,9 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             Intent service = (Intent)param.args[0];
-                            XposedBridge.log("$$$ ContextImpl startService: " + service.getAction());
+                            String pkgName = service.getPackage();
+                            ComponentName componentName = service.getComponent();
+                            XposedBridge.log("$$$ ContextImpl startService: " + service.getAction() + ", package: " + pkgName + ", component: " + componentName);
                         }
                     }
             );
@@ -411,7 +470,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
             clazz = null;
         }*/
 
-        try {
+        /*try {
             clazz = XposedHelpers.findClass("android.os.ServiceManager", loader);
         } catch (XposedHelpers.ClassNotFoundError e) {
             XposedBridge.log("$$$ class not found: android.os.ServiceManager");
@@ -431,7 +490,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                     }
             );
             clazz = null;
-        }
+        }*/
     }
 
     protected void dumpPackageInfo(LoadPackageParam param) {
@@ -496,7 +555,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
 
                             ArrayList<ApplicationInfo> to_remove = new ArrayList<>();
                             for (ApplicationInfo info : applicationInfoList) {
-                                if (info.packageName.contains(ModulePackageName) || info.packageName.contains(XposedPackageName)) {
+                                if (info.packageName.contains(BBOOPackageName) || info.packageName.contains(XposedPackageName)) {
                                     to_remove.add(info);
                                 }
                             }
@@ -520,7 +579,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
 
                             ArrayList<PackageInfo> to_remove = new ArrayList<>();
                             for (PackageInfo info : packageInfoList) {
-                                if (info.packageName.contains(ModulePackageName) || info.packageName.contains(XposedPackageName)) {
+                                if (info.packageName.contains(BBOOPackageName) || info.packageName.contains(XposedPackageName)) {
                                     to_remove.add(info);
                                 }
                             }
@@ -541,7 +600,7 @@ public class XposedHook implements IXposedHookZygoteInit, IXposedHookLoadPackage
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             ComponentName component = (ComponentName)param.args[0];
                             XposedBridge.log("$$$ setComponentEnabledSetting: " + component.toString());
-                            param.args[1] = PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+                            //param.args[1] = PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
                         }
                     }
             );

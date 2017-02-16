@@ -10,9 +10,13 @@ import android.view.View;
  */
 public class GridDividerDecoration extends RecyclerView.ItemDecoration {
     private Drawable mDivider;
+    private boolean mDrawVertical;
+    private boolean mDrawHorizontal;
 
-    public GridDividerDecoration(Drawable divider) {
+    public GridDividerDecoration(Drawable divider, boolean vertical, boolean horizontal) {
         mDivider = divider;
+        mDrawVertical = vertical;
+        mDrawHorizontal = horizontal;
     }
 
     @Override
@@ -25,21 +29,25 @@ public class GridDividerDecoration extends RecyclerView.ItemDecoration {
             child = parent.getChildAt(i);
             params = (RecyclerView.LayoutParams) child.getLayoutParams();
 
-            // Vertical
-            left = child.getLeft() - params.leftMargin;
-            right = child.getRight() + params.rightMargin;
-            top = child.getBottom() + params.bottomMargin;
-            bottom = top + mDivider.getIntrinsicHeight() - 1;
-            mDivider.setBounds(left, top, right, bottom);
-            mDivider.draw(c);
+            if(mDrawVertical) {
+                // Vertical
+                left = child.getLeft() - params.leftMargin;
+                right = child.getRight() + params.rightMargin;
+                top = child.getBottom() + params.bottomMargin;
+                bottom = top + mDivider.getIntrinsicHeight() - 1;
+                mDivider.setBounds(left, top, right, bottom);
+                mDivider.draw(c);
+            }
 
-            // Horizontal
-            left = child.getRight() + params.rightMargin;
-            right = left + mDivider.getIntrinsicWidth() - 1;
-            top = child.getTop() - params.topMargin;
-            bottom = child.getBottom() + params.bottomMargin;
-            mDivider.setBounds(left, top, right, bottom);
-            mDivider.draw(c);
+            if(mDrawHorizontal) {
+                // Horizontal
+                left = child.getRight() + params.rightMargin;
+                right = left + mDivider.getIntrinsicWidth() - 1;
+                top = child.getTop() - params.topMargin;
+                bottom = child.getBottom() + params.bottomMargin;
+                mDivider.setBounds(left, top, right, bottom);
+                mDivider.draw(c);
+            }
         }
     }
 }

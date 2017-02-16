@@ -53,7 +53,7 @@
 
     <ImageView
         android:id="@+id/marked_icon"
-        android:src="@drawable/marked"
+        android:src="@drawable/running"
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
         android:layout_marginEnd="6dp"

@@ -1,4 +1,4 @@
-package com.weihuoya.bboo;
+package com.weihuoya.bboo.activity;
 
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -8,8 +8,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ServiceInfo;
+import android.content.pm.Signature;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -21,17 +21,31 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.weihuoya.bboo.GridDividerDecoration;
+import com.weihuoya.bboo._P;
+import com.weihuoya.bboo.model.ManifestModel;
+import com.weihuoya.bboo.model.PackageModel;
+import com.weihuoya.bboo.R;
+import com.weihuoya.bboo._G;
+
+import java.io.ByteArrayInputStream;
+import java.lang.reflect.Method;
+import java.math.BigInteger;
+import java.security.Principal;
+import java.security.PublicKey;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ActionListActivity extends AppCompatActivity {
 
     private RecyclerView mRecyclerView;
-    private AppItemModel mAppModel;
+    private PackageModel mAppModel;
     private int mActionId;
 
     public class ActionModel {
@@ -47,16 +61,33 @@ public class ActionListActivity extends AppCompatActivity {
             return null;
         }
 
-        public boolean isRunning() {
-            return false;
-        }
-
-        public boolean isAuthorized() {
+        public boolean isEnabled() {
             return false;
         }
 
         public void onClick() {
 
+        }
+    }
+
+    public class ActionIntentFilterModel extends ActionModel {
+        private ManifestModel.IntentFilterModel mModel;
+
+        public ActionIntentFilterModel(ManifestModel.IntentFilterModel model) {
+            mModel = model;
+        }
+
+        public String getName() {
+            return mModel.label;
+        }
+
+        public String getDescription() {
+            StringBuilder sb = new StringBuilder();
+            for(ManifestModel.ActionModel action : mModel.actions) {
+                sb.append(action.name);
+                sb.append(";");
+            }
+            return sb.toString();
         }
     }
 
@@ -91,7 +122,7 @@ public class ActionListActivity extends AppCompatActivity {
         }
 
         @Override
-        public boolean isAuthorized() {
+        public boolean isEnabled() {
             return (mFlag & PackageInfo.REQUESTED_PERMISSION_GRANTED) > 0;
         }
     }
@@ -102,7 +133,7 @@ public class ActionListActivity extends AppCompatActivity {
 
         public ActionPermissionModel(PermissionInfo info) {
             mInfo = info;
-            mFlag = 0;
+            mFlag = 0xFFFFFFFF;
         }
 
         public ActionPermissionModel(PermissionInfo info, int flag) {
@@ -128,7 +159,7 @@ public class ActionListActivity extends AppCompatActivity {
         }
 
         @Override
-        public boolean isAuthorized() {
+        public boolean isEnabled() {
             return (mFlag & PackageInfo.REQUESTED_PERMISSION_GRANTED) > 0;
         }
     }
@@ -200,7 +231,7 @@ public class ActionListActivity extends AppCompatActivity {
         }
 
         @Override
-        public boolean isRunning() {
+        public boolean isEnabled() {
             return _G.isServiceRunning(mInfo.name);
         }
     }
@@ -227,6 +258,76 @@ public class ActionListActivity extends AppCompatActivity {
         @Override
         public String getDescription() {
             return mInfo.name;
+        }
+    }
+
+    public class SignatureModel extends ActionModel {
+        private Signature mInfo;
+        private String name;
+        private String description;
+
+        public SignatureModel(Signature info) {
+            mInfo = info;
+            parseSignature(info.toByteArray());
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String getDescription() {
+            return description;
+        }
+
+        public void parseSignature(byte[] signature) {
+            CertificateFactory certFactory = null;
+            X509Certificate cert = null;
+
+            try {
+                certFactory = CertificateFactory.getInstance("X.509");
+                cert = (X509Certificate) certFactory.generateCertificate(new ByteArrayInputStream(signature));
+            } catch (CertificateException e) {
+                _G.log(e.toString());
+            }
+
+            if(cert != null) {
+                Class OpenSSLRSAPublicKey = null;
+                PublicKey publicKey = cert.getPublicKey();
+                String sigAlgName = cert.getSigAlgName();
+                String sigAlgOID = cert.getSigAlgOID();
+                BigInteger serialNumber = cert.getSerialNumber();
+                Principal subjectDN = cert.getSubjectDN();
+                Principal issuerDN = cert.getIssuerDN();
+
+                try {
+                    OpenSSLRSAPublicKey = getClassLoader().loadClass("com.android.org.conscrypt.OpenSSLRSAPublicKey");
+                } catch (ClassNotFoundException e) {
+                    _G.log(e.toString());
+                }
+
+                if(OpenSSLRSAPublicKey != null && OpenSSLRSAPublicKey.isInstance(publicKey)) {
+                    try {
+                        Method getModulus = OpenSSLRSAPublicKey.getMethod("getModulus");
+                        Method getPublicExponent = OpenSSLRSAPublicKey.getMethod("getPublicExponent");
+                        BigInteger modulus = (BigInteger)getModulus.invoke(publicKey);
+                        BigInteger publicExponent = (BigInteger)getPublicExponent.invoke(publicKey);
+                        _G.log("modulus:" + modulus.toString(16));
+                        _G.log("publicExponent:" + publicExponent.toString(16));
+                    } catch (Exception e) {
+                        _G.log(e.toString());
+                    }
+                }
+
+                name = sigAlgName + "(" + sigAlgOID + ")";
+                description = subjectDN.toString();
+                _G.log("sigAlgName:" + sigAlgName);
+                _G.log("signNumber:" + serialNumber);
+                _G.log("sigAlgOID:" + sigAlgOID);
+                _G.log("subjectDN:" + subjectDN.toString());
+                _G.log("issuerDN:" + issuerDN.toString());
+            }
         }
     }
 
@@ -273,9 +374,7 @@ public class ActionListActivity extends AppCompatActivity {
                 descView.setText(desc);
             }
 
-            boolean running = model.isRunning();
-            boolean authorized = model.isAuthorized();
-            if(running || authorized) {
+            if(model.isEnabled()) {
                 markView.setVisibility(View.VISIBLE);
             } else {
                 markView.setVisibility(View.INVISIBLE);
@@ -291,7 +390,7 @@ public class ActionListActivity extends AppCompatActivity {
 
         @Override
         public ActionViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.action_info_item, parent, false);
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.action_list_item, parent, false);
             return new ActionViewHolder(view);
         }
 
@@ -313,7 +412,7 @@ public class ActionListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_action_list);
+        setContentView(R.layout.activity_actions);
         setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         _G.attachContext(this);
 
@@ -324,8 +423,11 @@ public class ActionListActivity extends AppCompatActivity {
         RecyclerView recyclerView = (RecyclerView) findViewById(R.id.listActions);
         if(mAppModel != null && recyclerView != null) {
             final ActionListAdapter adapter = new ActionListAdapter();
-            final GridDividerDecoration decoration = new GridDividerDecoration(this.getDrawable(R.drawable.line_divider));
+            final GridDividerDecoration decoration = new GridDividerDecoration(
+                    this.getDrawable(R.drawable.line_divider), true, false
+            );
             final PackageInfo pkg = mAppModel.getPackageInfo();
+            //final ManifestModel manifestModel = mAppModel.getManifest();
             final PackageManager pm = _G.getPackageManager();
 
             ArrayList<ActionModel> dataset = new ArrayList<>();
@@ -377,6 +479,16 @@ public class ActionListActivity extends AppCompatActivity {
                         dataset.add(new ActionStringModel(info.name));
                     }
                     break;
+                /*case R.string.action_item_intentFilters:
+                    for(ManifestModel.IntentFilterModel model : manifestModel.intentFilters) {
+                        dataset.add(new ActionIntentFilterModel(model));
+                    }
+                    break;*/
+                case R.string.action_item_signatures:
+                    for(Signature sign : pkg.signatures) {
+                        dataset.add(new SignatureModel(sign));
+                    }
+                    break;
             }
 
             setTitle(String.format(getString(mActionId), dataset.size()));
@@ -407,13 +519,9 @@ public class ActionListActivity extends AppCompatActivity {
 
     private void handleIntent(Intent intent) {
         String packageName = intent.getStringExtra("package");
-        mActionId = intent.getIntExtra("action", 0);
-
-        for(AppItemModel model : _G.ApplicationList) {
-            if(model.getPackageName().equals(packageName)) {
-                mAppModel = model;
-                break;
-            }
+        if(packageName != null && !packageName.isEmpty()) {
+            mActionId = intent.getIntExtra("action", 0);
+            mAppModel = _P.getPackageDetail(packageName);
         }
     }
 }
